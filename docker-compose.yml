@@ -7,10 +7,10 @@ services:
       PG_USER: test
       PG_PASSWORD: test
       PG_DB: test
-    ports:
-      - "8080:8080"
     depends_on:
-      - postgres
+    - postgres
+    expose:
+    - "8080"
   postgres:
     image: postgres:16-alpine
     environment:
@@ -18,7 +18,18 @@ services:
       POSTGRES_PASSWORD: test
       POSTGRES_DB: test
     volumes:
-      - pgdata:/var/lib/postgresql/data
-
+    - pgdata:/var/lib/postgresql/data
+  vibenest-backup:
+    build:
+      context: ./.vibenest-backup
+    restart: unless-stopped
+    environment:
+      VN_POLL_URL: https://vibenest.net/api/internal/backups/jobs
+      VN_SECRET: 'afbe2f29a5628c991b7c48929542acb460c16df8526a53b8'
+      VN_STARTUP_ID: 121
+      VN_TARGETS: '[{"service":"postgres","engine":"postgres","host":"postgres","port":5432,"user":"test","password":"test","db":"test"}]'
+      VN_POLL_INTERVAL: 20
+    depends_on:
+    - postgres
 volumes:
   pgdata:
