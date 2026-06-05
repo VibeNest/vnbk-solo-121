@@ -25,14 +25,14 @@ target_field() { # $1=service $2=field
 }
 
 backup_postgres() { # $1=host $2=port $3=user $4=pass $5=db -> writes /tmp/art, echoes size or "ERR:msg"
-  local out=/tmp/art.dump
+  local out=/tmp/art
   if ! PGPASSWORD="$4" pg_dump -Fc -h "$1" -p "$2" -U "$3" -d "$5" -f "$out" 2> /tmp/err; then
     echo "ERR:pg_dump failed: $(tr -d '\n' < /tmp/err | tail -c 400)"; return 1; fi
   stat -c %s "$out"
 }
 restore_postgres() { # $1=host $2=port $3=user $4=pass $5=db (reads /tmp/art)
   if ! PGPASSWORD="$4" pg_restore --clean --if-exists --no-owner --no-acl \
-       -h "$1" -p "$2" -U "$3" -d "$5" /tmp/art.dump 2> /tmp/err; then
+       -h "$1" -p "$2" -U "$3" -d "$5" /tmp/art 2> /tmp/err; then
     # pg_restore emits non-fatal warnings on --clean; treat exit>0 with no "error:" lines as ok
     if grep -qi "error:" /tmp/err; then echo "ERR:pg_restore: $(tr -d '\n' < /tmp/err | tail -c 400)"; return 1; fi
   fi
