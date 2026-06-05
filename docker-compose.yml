@@ -7,8 +7,10 @@ services:
       PG_USER: test
       PG_PASSWORD: test
       PG_DB: test
+      QDRANT_URL: http://qdrant:6333
     depends_on:
     - postgres
+    - qdrant
     expose:
     - "8080"
   postgres:
@@ -19,6 +21,10 @@ services:
       POSTGRES_DB: test
     volumes:
     - pgdata:/var/lib/postgresql/data
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    volumes:
+    - qdrant_storage:/qdrant/storage
   vibenest-backup:
     build:
       context: ./.vibenest-backup
@@ -27,9 +33,11 @@ services:
       VN_POLL_URL: https://vibenest.net/api/internal/backups/jobs
       VN_SECRET: 'afbe2f29a5628c991b7c48929542acb460c16df8526a53b8'
       VN_STARTUP_ID: 121
-      VN_TARGETS: '[{"service":"postgres","engine":"postgres","host":"postgres","port":5432,"user":"test","password":"test","db":"test"}]'
+      VN_TARGETS: '[{"service":"postgres","engine":"postgres","host":"postgres","port":5432,"user":"test","password":"test","db":"test"},{"service":"qdrant","engine":"qdrant","host":"qdrant","port":6333,"apiKey":""}]'
       VN_POLL_INTERVAL: 20
     depends_on:
     - postgres
+    - qdrant
 volumes:
-  pgdata:
+  pgdata: 
+  qdrant_storage:
