@@ -25,17 +25,19 @@ target_field() { # $1=service $2=field
 }
 
 backup_postgres() { # $1=host $2=port $3=user $4=pass $5=db -> writes /tmp/art, echoes size or "ERR:msg"
-  local out=/tmp/art
-  if ! PGPASSWORD="$4" pg_dump -Fc -h "$1" -p "$2" -U "$3" -d "$5" -f "$out" 2> /tmp/err; then
+  if ! PGPASSWORD="$4" pg_dump -Fc -h "$1" -p "$2" -U "$3" -d "$5" -f /tmp/art 2> /tmp/err; then
     echo "ERR:pg_dump failed: $(tr -d '\n' < /tmp/err | tail -c 400)"; return 1; fi
-  stat -c %s "$out"
+  stat -c %s /tmp/art
 }
 restore_postgres() { # $1=host $2=port $3=user $4=pass $5=db (reads /tmp/art)
-  if ! PGPASSWORD="$4" pg_restore --clean --if-exists --no-owner --no-acl \
-       -h "$1" -p "$2" -U "$3" -d "$5" /tmp/art 2> /tmp/err; then
-    # pg_restore emits non-fatal warnings on --clean; treat exit>0 with no "error:" lines as ok
-    if grep -qi "error:" /tmp/err; then echo "ERR:pg_restore: $(tr -d '\n' < /tmp/err | tail -c 400)"; return 1; fi
-  fi
+  PGPASSWORD="$4" pg_restore --clean --if-exists --no-owner --no-acl \
+    -h "$1" -p "$2" -U "$3" -d "$5" /tmp/art 2> /tmp/err
+  # pg_restore --clean ALWAYS emits benign per-statement errors (dropping absent objects) and
+  # a newer client restoring to an older server emits unknown-GUC errors (e.g. SET
+  # transaction_timeout on pg<17) — it logs "errors ignored on restore: N" and the data still
+  # loads. Only a connection / unreadable-archive problem is a real failure.
+  if grep -qiE "could not connect|connection refused|FATAL:|could not read|not a valid archive|out of memory|no such (host|file)|could not open" /tmp/err; then
+    echo "ERR:pg_restore: $(tr -d '\n' < /tmp/err | tail -c 400)"; return 1; fi
   echo ok
 }
 
